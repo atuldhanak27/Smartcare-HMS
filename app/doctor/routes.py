@@ -1,0 +1,304 @@
+from datetime import date, datetime
+
+from flask import render_template, redirect, url_for, request, flash, abort
+from flask_login import login_required, current_user
+
+from app.doctor import doctor_bp
+from app.decorators import role_required
+from app.extensions import db
+from app.utils.email_service import send_email
+from app.utils.prescription_pdf import generate_prescription_pdf
+from app.models import (
+    Doctor,
+    Appointment,
+    Patient,
+    MedicalRecord,
+    Prescription,
+    PrescriptionItem,
+)
+
+
+def _current_doctor():
+    """Return the Doctor row linked to the logged-in doctor user, or 404."""
+    doctor = Doctor.query.filter_by(user_id=current_user.id).first()
+    if not doctor:
+        abort(404, description="Doctor profile not found for this account.")
+    return doctor
+
+
+@doctor_bp.route("/dashboard")
+@login_required
+@role_required("doctor")
+def dashboard():
+    doctor = _current_doctor()
+    todays_appts = (
+        Appointment.query.filter(
+            Appointment.doctor_id == doctor.id,
+            Appointment.appointment_date == date.today(),
+        )
+        .order_by(Appointment.appointment_time.asc())
+        .all()
+    )
+    upcoming_count = Appointment.query.filter(
+        Appointment.doctor_id == doctor.id,
+        Appointment.appointment_date > date.today(),
+        Appointment.status == "Scheduled",
+    ).count()
+    completed_today = sum(1 for a in todays_appts if a.status == "Completed")
+    return render_template(
+        "doctor/dashboard.html",
+        doctor=doctor,
+        todays_appts=todays_appts,
+        upcoming_count=upcoming_count,
+        completed_today=completed_today,
+    )
+
+
+# ---------------------------------------------------------------------------
+# CONSULTATION
+# ---------------------------------------------------------------------------
+@doctor_bp.route("/consultation/<int:appointment_id>", methods=["GET", "POST"])
+@login_required
+@role_required("doctor")
+def consultation(appointment_id):
+    doctor = _current_doctor()
+    appt = db.session.get(Appointment, appointment_id)
+    if not appt or appt.doctor_id != doctor.id:
+        flash("Appointment not found.", "danger")
+        return redirect(url_for("doctor.dashboard"))
+
+    patient = appt.patient
+    existing_record = appt.medical_record  # None unless already consulted
+
+    if request.method == "POST":
+        if existing_record:
+            flash("This appointment has already been consulted.", "warning")
+            return redirect(url_for("doctor.view_prescription", appointment_id=appt.id))
+
+        diagnosis = request.form.get("diagnosis", "").strip()
+        clinical_notes = request.form.get("clinical_notes", "").strip() or None
+        follow_up_date_raw = request.form.get("follow_up_date", "").strip()
+        advice = request.form.get("advice", "").strip() or None
+
+        medicine_names = request.form.getlist("medicine_name[]")
+        dosages = request.form.getlist("dosage[]")
+        frequencies = request.form.getlist("frequency[]")
+        durations = request.form.getlist("duration[]")
+        instructions = request.form.getlist("instructions[]")
+
+        errors = []
+        if not diagnosis:
+            errors.append("Diagnosis is required.")
+
+        follow_up_date = None
+        if follow_up_date_raw:
+            try:
+                follow_up_date = datetime.strptime(follow_up_date_raw, "%Y-%m-%d").date()
+            except ValueError:
+                errors.append("Follow-up date is invalid.")
+
+        # Build clean list of medicine rows (skip fully-empty rows)
+        med_rows = []
+        for i in range(len(medicine_names)):
+            name = medicine_names[i].strip() if i < len(medicine_names) else ""
+            if not name:
+                continue
+            med_rows.append(
+                {
+                    "medicine_name": name,
+                    "dosage": dosages[i].strip() if i < len(dosages) else "",
+                    "frequency": frequencies[i].strip() if i < len(frequencies) else "",
+                    "duration": durations[i].strip() if i < len(durations) else "",
+                    "instructions": instructions[i].strip() if i < len(instructions) else "",
+                }
+            )
+
+        if errors:
+            for e in errors:
+                flash(e, "danger")
+            return render_template(
+                "doctor/consultation.html",
+                appt=appt,
+                patient=patient,
+                vitals_history=patient.vitals.limit(5).all(),
+                latest_vitals=patient.latest_vitals,
+                past_records=patient.medical_records.order_by(
+                    MedicalRecord.recorded_at.desc()
+                ).all(),
+                form=request.form,
+                med_rows=med_rows,
+            )
+
+        # Persist: medical record -> prescription -> items
+        record = MedicalRecord(
+            patient_id=patient.id,
+            doctor_id=doctor.id,
+            appointment_id=appt.id,
+            diagnosis=diagnosis,
+            clinical_notes=clinical_notes,
+            follow_up_date=follow_up_date,
+        )
+        db.session.add(record)
+        db.session.flush()  # get record.id
+
+        prescription = None
+
+        if med_rows:
+            prescription = Prescription(
+                medical_record_id=record.id,
+                patient_id=patient.id,
+                doctor_id=doctor.id,
+                advice=advice,
+            )
+            db.session.add(prescription)
+            db.session.flush()
+
+            for row in med_rows:
+                db.session.add(
+                    PrescriptionItem(
+                        prescription_id=prescription.id,
+                        medicine_name=row["medicine_name"],
+                        dosage=row["dosage"] or "-",
+                        frequency=row["frequency"] or "-",
+                        duration=row["duration"] or "-",
+                        instructions=row["instructions"] or None,
+                    )
+                )
+        appt.status = "Completed"
+        db.session.commit()
+
+        # Send prescription PDF by email
+        if prescription and patient.email:
+            try:
+                pdf_bytes = generate_prescription_pdf(
+                    patient=patient,
+                    doctor=doctor,
+                    record=record,
+                    prescription=prescription,
+                )
+
+                import base64
+
+                pdf_base64 = base64.b64encode(pdf_bytes).decode("utf-8")
+
+                send_email(
+                    patient.email,
+                    "SmartCare - Prescription",
+                    f"""
+                    <h2>SmartCare Prescription</h2>
+
+                    <p>Hello {patient.full_name},</p>
+
+                    <p>
+                        Your consultation has been completed.
+                        Your prescription is attached to this email as a PDF.
+                    </p>
+
+                    <p>
+                        <strong>Doctor:</strong> Dr. {doctor.full_name}<br>
+                        <strong>Diagnosis:</strong> {record.diagnosis}
+                    </p>
+
+                    <p>Thank you for using SmartCare.</p>
+                    """,
+                    attachments=[
+                        {
+                            "content": pdf_base64,
+                            "filename": f"prescription_{patient.patient_code}.pdf",
+                        }
+                    ],
+                )
+
+            except Exception as e:
+                print("Prescription email failed:", e)
+
+        flash("Consultation saved successfully.", "success")
+        return redirect(
+            url_for("doctor.view_prescription", appointment_id=appt.id)
+        )
+
+    return render_template(
+        "doctor/consultation.html",
+        appt=appt,
+        patient=patient,
+        vitals_history=patient.vitals.limit(5).all(),
+        latest_vitals=patient.latest_vitals,
+        past_records=patient.medical_records.order_by(
+            MedicalRecord.recorded_at.desc()
+        ).all(),
+        form={},
+        med_rows=[],
+        existing_record=existing_record,
+    )
+
+@doctor_bp.route("/appointments/<int:appointment_id>/cancel", methods=["POST"])
+@login_required
+@role_required("doctor")
+def cancel_appointment(appointment_id):
+    doctor = _current_doctor()
+    appt = db.session.get(Appointment, appointment_id)
+    if not appt or appt.doctor_id != doctor.id:
+        flash("Appointment not found.", "danger")
+        return redirect(url_for("doctor.dashboard"))
+    reason = request.form.get("status", "Cancelled")
+    if reason in ("Cancelled", "No-Show"):
+        appt.status = reason
+        db.session.commit()
+        flash(f"Appointment marked as {reason}.", "info")
+    return redirect(url_for("doctor.dashboard"))
+
+
+# ---------------------------------------------------------------------------
+# PRESCRIPTION VIEW / PRINT
+# ---------------------------------------------------------------------------
+@doctor_bp.route("/prescription/<int:appointment_id>")
+@login_required
+@role_required("doctor")
+def view_prescription(appointment_id):
+    doctor = _current_doctor()
+    appt = db.session.get(Appointment, appointment_id)
+    if not appt or appt.doctor_id != doctor.id:
+        flash("Appointment not found.", "danger")
+        return redirect(url_for("doctor.dashboard"))
+
+    record = appt.medical_record
+    if not record:
+        flash("No consultation recorded for this appointment yet.", "warning")
+        return redirect(url_for("doctor.consultation", appointment_id=appt.id))
+
+    prescription = record.prescription
+    return render_template(
+        "doctor/prescription_view.html",
+        appt=appt,
+        patient=appt.patient,
+        doctor=doctor,
+        record=record,
+        prescription=prescription,
+    )
+
+
+# ---------------------------------------------------------------------------
+# PATIENT HISTORY
+# ---------------------------------------------------------------------------
+@doctor_bp.route("/patients/<int:patient_id>/history")
+@login_required
+@role_required("doctor")
+def patient_history(patient_id):
+    _current_doctor()
+    patient = db.session.get(Patient, patient_id)
+    if not patient:
+        flash("Patient not found.", "danger")
+        return redirect(url_for("doctor.dashboard"))
+
+    records = patient.medical_records.order_by(MedicalRecord.recorded_at.desc()).all()
+    vitals_history = patient.vitals.limit(15).all()
+    appointments = patient.appointments.order_by(
+        Appointment.appointment_date.desc(), Appointment.appointment_time.desc()
+    ).all()
+    return render_template(
+        "doctor/patient_history.html",
+        patient=patient,
+        records=records,
+        vitals_history=vitals_history,
+        appointments=appointments,
+    )

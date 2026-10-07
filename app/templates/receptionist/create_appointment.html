@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}New Appointment{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-white fw-semibold"><i class="bi bi-calendar-plus"></i> Create Appointment</div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row g-3">
+                        <div class="col-12 position-relative">
+                            <label class="form-label">Search Patient (name / phone / code) *</label>
+                            <input type="text" id="patient-search-box" class="form-control"
+                                   placeholder="Start typing to search..."
+                                   value="{% if preselected_patient %}{{ preselected_patient.patient_code }} - {{ preselected_patient.full_name }} ({{ preselected_patient.phone }}){% endif %}"
+                                   autocomplete="off" required>
+                            <input type="hidden" id="patient_id" name="patient_id"
+                                   value="{% if preselected_patient %}{{ preselected_patient.id }}{% endif %}">
+                            <div id="patient-search-results" class="list-group position-absolute w-100 d-none" style="z-index: 1000;"></div>
+                            <small class="text-muted">No patient? <a href="{{ url_for('receptionist.register_patient') }}">Register a new patient first</a>.</small>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Doctor *</label>
+                            <select name="doctor_id" class="form-select" required>
+                                <option value="">Select doctor</option>
+                                {% for d in doctors %}
+                                <option value="{{ d.id }}" {% if form.doctor_id|string == d.id|string %}selected{% endif %}>
+                                    Dr. {{ d.full_name }} ({{ d.specialization }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Date *</label>
+                            <input type="date" name="appointment_date" class="form-control"
+                                   value="{{ form.appointment_date or '' }}" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Time *</label>
+                            <input type="time" name="appointment_time" class="form-control"
+                                   value="{{ form.appointment_time or '' }}" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Reason for visit</label>
+                            <input type="text" name="reason" class="form-control" placeholder="e.g. Fever, routine checkup"
+                                   value="{{ form.reason or '' }}">
+                        </div>
+                    </div>
+
+                    <div class="mt-4 d-flex justify-content-end gap-2">
+                        <a href="{{ url_for('receptionist.appointments') }}" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-sc-primary"><i class="bi bi-check-circle"></i> Create Appointment</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

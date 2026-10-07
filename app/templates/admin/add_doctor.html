@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Register Doctor{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header bg-white fw-semibold"><i class="bi bi-person-badge"></i> Register New Doctor</div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Username *</label>
+                            <input type="text" name="username" class="form-control" value="{{ form.username or '' }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Full Name *</label>
+                            <input type="text" name="full_name" class="form-control" value="{{ form.full_name or '' }}" placeholder="e.g. Priya Sharma" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" class="form-control" value="{{ form.email or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Password *</label>
+                            <input type="password" name="password" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Specialization *</label>
+                            <input type="text" name="specialization" class="form-control" value="{{ form.specialization or '' }}" placeholder="e.g. Cardiology" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Phone</label>
+                            <input type="text" name="phone" class="form-control" value="{{ form.phone or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Qualification</label>
+                            <input type="text" name="qualification" class="form-control" value="{{ form.qualification or '' }}" placeholder="e.g. MBBS, MD">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Experience (years)</label>
+                            <input type="number" min="0" name="experience_years" class="form-control" value="{{ form.experience_years or 0 }}">
+                        </div>
+                    </div>
+
+                    <div class="mt-4 d-flex justify-content-end gap-2">
+                        <a href="{{ url_for('admin.doctors') }}" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-sc-primary"><i class="bi bi-check-circle"></i> Register Doctor</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,96 @@
+:root {
+    --sc-primary: #0f6e5e;
+    --sc-primary-dark: #0b4f43;
+    --sc-accent: #1a9c86;
+    --sc-bg: #f4f7f8;
+    --sc-card-radius: 0.75rem;
+}
+
+body {
+    background-color: var(--sc-bg);
+    font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.sc-navbar {
+    background: linear-gradient(90deg, var(--sc-primary-dark), var(--sc-primary));
+}
+
+.sc-role-badge {
+    background-color: var(--sc-accent);
+    color: #fff;
+}
+
+.sc-footer {
+    background: transparent;
+}
+
+.card {
+    border: none;
+    border-radius: var(--sc-card-radius);
+    box-shadow: 0 2px 10px rgba(15, 110, 94, 0.08);
+}
+
+.card-header {
+    border-radius: var(--sc-card-radius) var(--sc-card-radius) 0 0 !important;
+}
+
+.stat-card {
+    border-left: 5px solid var(--sc-primary);
+}
+
+.stat-card .stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--sc-primary-dark);
+}
+
+.btn-sc-primary {
+    background-color: var(--sc-primary);
+    border-color: var(--sc-primary);
+    color: #fff;
+}
+
+.btn-sc-primary:hover {
+    background-color: var(--sc-primary-dark);
+    border-color: var(--sc-primary-dark);
+    color: #fff;
+}
+
+.login-wrapper {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--sc-primary-dark), var(--sc-accent));
+}
+
+.login-card {
+    max-width: 420px;
+    width: 100%;
+}
+
+.badge-status-Scheduled { background-color: #0d6efd; }
+.badge-status-Completed { background-color: #198754; }
+.badge-status-Cancelled { background-color: #6c757d; }
+.badge-status-NoShow, .badge-status-No-Show { background-color: #dc3545; }
+
+.patient-code-pill {
+    font-family: "Courier New", monospace;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.rx-item-row {
+    background: #f8fbfa;
+    border: 1px solid #e1eae8;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+@media print {
+    .no-print { display: none !important; }
+    .sc-navbar, footer { display: none !important; }
+    body { background: #fff; }
+    .card { box-shadow: none !important; border: 1px solid #ccc !important; }
+}

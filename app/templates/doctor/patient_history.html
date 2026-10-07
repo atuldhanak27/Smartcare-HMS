@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Patient History{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0"><i class="bi bi-clock-history"></i> Patient History &mdash; {{ patient.full_name }}
+        <span class="badge bg-light text-dark patient-code-pill">{{ patient.patient_code }}</span>
+    </h3>
+    <a href="{{ url_for('doctor.dashboard') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header bg-white fw-semibold">Patient Info</div>
+            <div class="card-body">
+                <table class="table table-borderless table-sm mb-0">
+                    <tr><th>Age / Gender</th><td>{{ patient.age }} / {{ patient.gender }}</td></tr>
+                    <tr><th>Phone</th><td>{{ patient.phone }}</td></tr>
+                    <tr><th>Blood Group</th><td>{{ patient.blood_group or '-' }}</td></tr>
+                    <tr><th>Emergency Contact</th><td>{{ patient.emergency_contact or '-' }}</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header bg-white fw-semibold"><i class="bi bi-heart-pulse"></i> Vitals History</div>
+            <div class="card-body p-0" style="max-height: 350px; overflow-y: auto;">
+                {% if vitals_history %}
+                <ul class="list-group list-group-flush">
+                {% for v in vitals_history %}
+                    <li class="list-group-item">
+                        <small class="text-muted">{{ v.recorded_at.strftime('%d %b %Y %I:%M %p') }}</small>
+                        <div>BP: {{ v.blood_pressure or '-' }} | Sugar: {{ v.blood_sugar or '-' }} | Temp: {{ v.temperature or '-' }}</div>
+                        <div class="small text-muted">Weight: {{ v.weight or '-' }}kg, Pulse: {{ v.pulse or '-' }}</div>
+                    </li>
+                {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted p-3 mb-0">No vitals recorded.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card mb-3">
+            <div class="card-header bg-white fw-semibold"><i class="bi bi-file-earmark-medical"></i> Medical Records & Prescriptions</div>
+            <div class="card-body">
+                {% if records %}
+                <div class="accordion" id="recordsAccordion">
+                {% for r in records %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#rec{{ r.id }}">
+                                {{ r.recorded_at.strftime('%d %b %Y') }} &mdash; {{ r.diagnosis[:60] }}
+                            </button>
+                        </h2>
+                        <div id="rec{{ r.id }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}"
+                             data-bs-parent="#recordsAccordion">
+                            <div class="accordion-body">
+                                <p><strong>Diagnosis:</strong> {{ r.diagnosis }}</p>
+                                {% if r.clinical_notes %}<p><strong>Notes:</strong> {{ r.clinical_notes }}</p>{% endif %}
+                                {% if r.follow_up_date %}<p><strong>Follow-up:</strong> {{ r.follow_up_date | date_fmt }}</p>{% endif %}
+                                {% if r.prescription and r.prescription.items %}
+                                <table class="table table-sm table-bordered mt-2">
+                                    <thead class="table-light"><tr><th>Medicine</th><th>Dosage</th><th>Frequency</th><th>Duration</th><th>Instructions</th></tr></thead>
+                                    <tbody>
+                                    {% for item in r.prescription.items %}
+                                        <tr>
+                                            <td>{{ item.medicine_name }}</td><td>{{ item.dosage }}</td>
+                                            <td>{{ item.frequency }}</td><td>{{ item.duration }}</td>
+                                            <td>{{ item.instructions or '-' }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                                {% endif %}
+                                {% if r.appointment %}
+                                <a href="{{ url_for('doctor.view_prescription', appointment_id=r.appointment.id) }}" class="btn btn-sm btn-outline-success mt-1">
+                                    <i class="bi bi-printer"></i> View / Print Prescription
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted mb-0">No medical records for this patient yet.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-white fw-semibold"><i class="bi bi-calendar3"></i> Appointment History</div>
+            <div class="card-body p-0">
+                {% if appointments %}
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>Date</th><th>Time</th><th>Doctor</th><th>Status</th></tr></thead>
+                    <tbody>
+                    {% for a in appointments %}
+                        <tr>
+                            <td>{{ a.appointment_date | date_fmt }}</td>
+                            <td>{{ a.appointment_time | time12 }}</td>
+                            <td>Dr. {{ a.doctor.full_name }}</td>
+                            <td><span class="badge badge-status-{{ a.status }}">{{ a.status }}</span></td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-muted p-3 mb-0">No appointments found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Prescription{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 no-print">
+    <h3 class="mb-0"><i class="bi bi-file-earmark-medical"></i> Prescription</h3>
+    <div>
+        <button onclick="window.print()" class="btn btn-sc-primary btn-sm"><i class="bi bi-printer"></i> Print</button>
+        <a href="{{ url_for('doctor.dashboard') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-4">
+        <div class="text-center border-bottom pb-3 mb-3">
+            <h3 class="mb-0 text-success"><i class="bi bi-heart-pulse-fill"></i> SmartCare Hospital</h3>
+            <small class="text-muted">Medical Prescription</small>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <strong>Patient:</strong> {{ patient.full_name }} ({{ patient.patient_code }})<br>
+                <strong>Age / Gender:</strong> {{ patient.age }} / {{ patient.gender }}<br>
+                <strong>Phone:</strong> {{ patient.phone }}
+            </div>
+            <div class="col-md-6 text-md-end">
+                <strong>Doctor:</strong> Dr. {{ doctor.full_name }}<br>
+                <strong>Specialization:</strong> {{ doctor.specialization }}<br>
+                <strong>Date:</strong> {{ record.recorded_at.strftime('%d %b %Y') }}
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <h6 class="text-uppercase text-muted small">Diagnosis</h6>
+            <p>{{ record.diagnosis }}</p>
+        </div>
+
+        {% if record.clinical_notes %}
+        <div class="mb-3">
+            <h6 class="text-uppercase text-muted small">Clinical Notes</h6>
+            <p>{{ record.clinical_notes }}</p>
+        </div>
+        {% endif %}
+
+        {% if prescription and prescription.items %}
+        <div class="mb-3">
+            <h6 class="text-uppercase text-muted small">Rx &mdash; Medicines</h6>
+            <table class="table table-bordered table-sm">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th><th>Medicine</th><th>Dosage</th><th>Frequency</th><th>Duration</th><th>Instructions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for item in prescription.items %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ item.medicine_name }}</td>
+                        <td>{{ item.dosage }}</td>
+                        <td>{{ item.frequency }}</td>
+                        <td>{{ item.duration }}</td>
+                        <td>{{ item.instructions or '-' }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">No medicines were prescribed for this consultation.</p>
+        {% endif %}
+
+        {% if prescription and prescription.advice %}
+        <div class="mb-3">
+            <h6 class="text-uppercase text-muted small">General Advice</h6>
+            <p>{{ prescription.advice }}</p>
+        </div>
+        {% endif %}
+
+        {% if record.follow_up_date %}
+        <div class="mb-0">
+            <h6 class="text-uppercase text-muted small">Follow-up Date</h6>
+            <p class="mb-0">{{ record.follow_up_date | date_fmt }}</p>
+        </div>
+        {% endif %}
+
+        <div class="text-end mt-5">
+            <p class="mb-0">___________________________</p>
+            <small class="text-muted">Dr. {{ doctor.full_name }}</small>
+        </div>
+    </div>
+</div>
+{% endblock %}

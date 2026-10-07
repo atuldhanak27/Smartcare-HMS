@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}Consultation{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0"><i class="bi bi-clipboard2-pulse"></i> Consultation &mdash; {{ patient.full_name }}
+        <span class="badge bg-light text-dark patient-code-pill">{{ patient.patient_code }}</span>
+    </h3>
+    <a href="{{ url_for('doctor.dashboard') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+
+{% if existing_record %}
+<div class="alert alert-info">
+    This appointment has already been consulted on {{ existing_record.recorded_at.strftime('%d %b %Y %I:%M %p') }}.
+    <a href="{{ url_for('doctor.view_prescription', appointment_id=appt.id) }}" class="alert-link">View the prescription</a>.
+</div>
+{% endif %}
+
+<div class="row g-3">
+    <!-- LEFT: Patient context -->
+    <div class="col-lg-4">
+        <div class="card mb-3">
+            <div class="card-header bg-white fw-semibold">Patient Info</div>
+            <div class="card-body">
+                <table class="table table-borderless table-sm mb-0">
+                    <tr><th>Age / Gender</th><td>{{ patient.age }} / {{ patient.gender }}</td></tr>
+                    <tr><th>Phone</th><td>{{ patient.phone }}</td></tr>
+                    <tr><th>Blood Group</th><td>{{ patient.blood_group or '-' }}</td></tr>
+                    <tr><th>Appointment</th><td>{{ appt.appointment_date | date_fmt }} at {{ appt.appointment_time | time12 }}</td></tr>
+                    <tr><th>Reason</th><td>{{ appt.reason or '-' }}</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header bg-white fw-semibold"><i class="bi bi-heart-pulse"></i> Latest Vitals</div>
+            <div class="card-body">
+                {% if latest_vitals %}
+                <table class="table table-borderless table-sm mb-0">
+                    <tr><th>Recorded</th><td>{{ latest_vitals.recorded_at.strftime('%d %b %Y %I:%M %p') }}</td></tr>
+                    <tr><th>BP</th><td>{{ latest_vitals.blood_pressure or '-' }}</td></tr>
+                    <tr><th>Blood Sugar</th><td>{{ latest_vitals.blood_sugar or '-' }}</td></tr>
+                    <tr><th>Temperature</th><td>{{ latest_vitals.temperature or '-' }}</td></tr>
+                    <tr><th>Weight / Height</th><td>{{ latest_vitals.weight or '-' }} kg / {{ latest_vitals.height or '-' }} cm</td></tr>
+                    <tr><th>Pulse</th><td>{{ latest_vitals.pulse or '-' }} bpm</td></tr>
+                    <tr><th>BMI</th><td>{{ latest_vitals.bmi or '-' }}</td></tr>
+                    <tr><th>Symptoms</th><td>{{ latest_vitals.symptoms or '-' }}</td></tr>
+                </table>
+                {% else %}
+                <p class="text-muted mb-0">No vitals recorded for this patient yet.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-white fw-semibold"><i class="bi bi-clock-history"></i> Past Records</div>
+            <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
+                {% if past_records %}
+                <ul class="list-group list-group-flush">
+                {% for r in past_records %}
+                    <li class="list-group-item">
+                        <small class="text-muted">{{ r.recorded_at.strftime('%d %b %Y') }}</small>
+                        <div class="fw-semibold">{{ r.diagnosis }}</div>
+                    </li>
+                {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted p-3 mb-0">No previous medical records.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT: Consultation form -->
+    <div class="col-lg-8">
+        <form method="POST">
+            <div class="card mb-3">
+                <div class="card-header bg-white fw-semibold"><i class="bi bi-file-earmark-text"></i> Diagnosis & Clinical Notes</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Diagnosis *</label>
+                        <textarea name="diagnosis" class="form-control" rows="2" required
+                                  {% if existing_record %}disabled{% endif %}>{{ form.diagnosis or '' }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Clinical Notes</label>
+                        <textarea name="clinical_notes" class="form-control" rows="3"
+                                  {% if existing_record %}disabled{% endif %}>{{ form.clinical_notes or '' }}</textarea>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label">Follow-up Date</label>
+                        <input type="date" name="follow_up_date" class="form-control" style="max-width: 220px;"
+                               value="{{ form.follow_up_date or '' }}" {% if existing_record %}disabled{% endif %}>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-capsule"></i> Prescription</span>
+                    {% if not existing_record %}
+                    <button type="button" id="add-rx-item" class="btn btn-sm btn-outline-success">
+                        <i class="bi bi-plus-circle"></i> Add Medicine
+                    </button>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <div id="rx-items-container">
+                        {% if med_rows %}
+                            {% for row in med_rows %}
+                            <div class="rx-item-row row g-2 align-items-end">
+                                <div class="col-md-3">
+                                    <label class="form-label small mb-1">Medicine Name</label>
+                                    <input type="text" class="form-control form-control-sm" name="medicine_name[]" value="{{ row.medicine_name }}">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small mb-1">Dosage</label>
+                                    <input type="text" class="form-control form-control-sm" name="dosage[]" value="{{ row.dosage }}">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small mb-1">Frequency</label>
+                                    <input type="text" class="form-control form-control-sm" name="frequency[]" value="{{ row.frequency }}">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small mb-1">Duration</label>
+                                    <input type="text" class="form-control form-control-sm" name="duration[]" value="{{ row.duration }}">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small mb-1">Instructions</label>
+                                    <input type="text" class="form-control form-control-sm" name="instructions[]" value="{{ row.instructions }}">
+                                </div>
+                                <div class="col-md-1">
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-rx-item w-100"><i class="bi bi-trash"></i></button>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="rx-item-row row g-2 align-items-end">
+                                <div class="col-md-3">
+                                    <label class="form-label small mb-1">Medicine Name</label>
+                                    <input type="text" class="form-control form-control-sm" name="medicine_name[]" placeholder="e.g. Paracetamol" {% if existing_record %}disabled{% endif %}>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small mb-1">Dosage</label>
+                                    <input type="text" class="form-control form-control-sm" name="dosage[]" placeholder="e.g. 500mg" {% if existing_record %}disabled{% endif %}>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small mb-1">Frequency</label>
+                                    <input type="text" class="form-control form-control-sm" name="frequency[]" placeholder="e.g. 1-0-1" {% if existing_record %}disabled{% endif %}>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small mb-1">Duration</label>
+                                    <input type="text" class="form-control form-control-sm" name="duration[]" placeholder="e.g. 5 days" {% if existing_record %}disabled{% endif %}>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small mb-1">Instructions</label>
+                                    <input type="text" class="form-control form-control-sm" name="instructions[]" placeholder="e.g. After food" {% if existing_record %}disabled{% endif %}>
+                                </div>
+                                <div class="col-md-1">
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-rx-item w-100"><i class="bi bi-trash"></i></button>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="mt-2">
+                        <label class="form-label">General Advice</label>
+                        <textarea name="advice" class="form-control" rows="2" placeholder="e.g. Drink plenty of fluids, rest for 3 days"
+                                  {% if existing_record %}disabled{% endif %}>{{ form.advice or '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            {% if not existing_record %}
+            <div class="d-flex justify-content-end gap-2 mb-4">
+                <a href="{{ url_for('doctor.dashboard') }}" class="btn btn-outline-secondary">Cancel</a>
+                <button type="submit" class="btn btn-sc-primary"><i class="bi bi-check-circle"></i> Save Consultation & Prescription</button>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+{% endblock %}

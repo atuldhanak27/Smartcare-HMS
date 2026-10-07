@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Add User{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header bg-white fw-semibold"><i class="bi bi-person-plus"></i> Add New User</div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Username *</label>
+                            <input type="text" name="username" class="form-control" value="{{ form.username or '' }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Full Name *</label>
+                            <input type="text" name="full_name" class="form-control" value="{{ form.full_name or '' }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" class="form-control" value="{{ form.email or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Password *</label>
+                            <input type="password" name="password" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Role *</label>
+                            <select name="role" id="role-select" class="form-select" required>
+                                <option value="">-- Select Role --</option>
+                                <option value="admin" {% if form.role == 'admin' %}selected{% endif %}>Admin</option>
+                                <option value="receptionist" {% if form.role == 'receptionist' %}selected{% endif %}>Receptionist</option>
+                                <option value="doctor" {% if form.role == 'doctor' %}selected{% endif %}>Doctor</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="doctor-fields" class="row g-3 mt-1 border-top pt-3 mt-3 d-none">
+                        <div class="col-12"><strong>Doctor Details</strong></div>
+                        <div class="col-md-6">
+                            <label class="form-label">Specialization *</label>
+                            <input type="text" name="specialization" class="form-control" value="{{ form.specialization or '' }}" placeholder="e.g. Cardiology">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Phone</label>
+                            <input type="text" name="phone" class="form-control" value="{{ form.phone or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Qualification</label>
+                            <input type="text" name="qualification" class="form-control" value="{{ form.qualification or '' }}" placeholder="e.g. MBBS, MD">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Experience (years)</label>
+                            <input type="number" min="0" name="experience_years" class="form-control" value="{{ form.experience_years or 0 }}">
+                        </div>
+                    </div>
+
+                    <div class="mt-4 d-flex justify-content-end gap-2">
+                        <a href="{{ url_for('admin.users') }}" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-sc-primary"><i class="bi bi-check-circle"></i> Create User</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('role-select').addEventListener('change', function () {
+    const doctorFields = document.getElementById('doctor-fields');
+    doctorFields.classList.toggle('d-none', this.value !== 'doctor');
+});
+document.addEventListener('DOMContentLoaded', function() {
+    const roleSelect = document.getElementById('role-select');
+    if (roleSelect.value === 'doctor') {
+        document.getElementById('doctor-fields').classList.remove('d-none');
+    }
+});
+</script>
+{% endblock %}

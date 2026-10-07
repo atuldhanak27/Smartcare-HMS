@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Record Vitals{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-heart-pulse"></i> Record Vitals &mdash; {{ patient.full_name }}
+                <span class="badge bg-light text-dark patient-code-pill">{{ patient.patient_code }}</span>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Blood Pressure</label>
+                            <input type="text" name="blood_pressure" class="form-control" placeholder="e.g. 120/80">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Blood Sugar</label>
+                            <input type="text" name="blood_sugar" class="form-control" placeholder="e.g. 95 mg/dL">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Temperature</label>
+                            <input type="text" name="temperature" class="form-control" placeholder="e.g. 98.6 F">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Weight (kg)</label>
+                            <input type="number" step="0.1" id="weight" name="weight" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Height (cm)</label>
+                            <input type="number" step="0.1" id="height" name="height" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Pulse (bpm)</label>
+                            <input type="number" name="pulse" class="form-control">
+                        </div>
+                        <div class="col-12">
+                            <small id="bmi-preview" class="text-success fw-semibold"></small>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Symptoms / Complaints</label>
+                            <textarea name="symptoms" class="form-control" rows="3" placeholder="Patient reported symptoms..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 d-flex justify-content-end gap-2">
+                        <a href="{{ url_for('receptionist.patient_detail', patient_id=patient.id) }}" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-sc-primary"><i class="bi bi-check-circle"></i> Save Vitals</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
