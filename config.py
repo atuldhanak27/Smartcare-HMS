@@ -32,6 +32,9 @@ class Config:
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,   # avoids "MySQL server has gone away" errors
         "pool_recycle": 280,
+        "connect_args": {
+            "ssl": {}
+        },
     }
 
     # --- Seed admin (used by scripts/seed_admin.py) ---
