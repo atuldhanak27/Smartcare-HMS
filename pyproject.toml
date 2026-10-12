@@ -1,2 +1,19 @@
+
+[project]
+name = "smartcare-hms"
+version = "1.0.0"
+requires-python = ">=3.12"
+dependencies = [
+    "Flask==3.0.3",
+    "Flask-Login==0.6.3",
+    "Flask-SQLAlchemy==3.1.1",
+    "PyMySQL==1.1.1",
+    "python-dotenv==1.0.1",
+    "Werkzeug==3.0.4",
+    "cryptography==43.0.1",
+    "resend",
+    "reportlab",
+]
+
 [tool.vercel]
 entrypoint = "run:app"
