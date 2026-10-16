@@ -11,6 +11,13 @@ body {
     font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
+.smartcare-logo {
+    width: 55px;
+    height: 55px;
+    object-fit: contain;
+    display: block;
+}
+
 .sc-navbar {
     background: linear-gradient(90deg, var(--sc-primary-dark), var(--sc-primary));
 }
