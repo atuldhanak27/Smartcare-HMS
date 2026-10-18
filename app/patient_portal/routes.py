@@ -94,8 +94,8 @@ def _clean_form(form, rules):
     #     errors.append("Email address is required.")
     # elif len(email) > 120 or not EMAIL_RE.match(email):
     #     errors.append("Please enter a valid email address.")
-    if not email or "@" not in email:
-        errors["email"] = "Please enter a valid email address."
+    if not email or len(email) > 120 or not EMAIL_RE.match(email):
+     errors.append("Please enter a valid email address.")
 
     day = slot = None
     if not date_raw:

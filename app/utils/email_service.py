@@ -3,10 +3,10 @@ import resend
 
 
 def send_email(to, subject, html, attachments=None):
-    api_key = os.getenv("RESEND_API_KEY")
+    resend.api_key = os.getenv("RESEND_API_KEY")
     from_email = os.getenv("RESEND_FROM_EMAIL")
 
-    if not api_key:
+    if not resend.api_key:
         print("RESEND_API_KEY is missing")
         return False
 
@@ -18,7 +18,7 @@ def send_email(to, subject, html, attachments=None):
         print("Recipient email is missing")
         return False
 
-    resend.api_key = api_key
+    resend.api_key = os.getenv("RESEND_API_KEY")
 
     try:
         email_data = {

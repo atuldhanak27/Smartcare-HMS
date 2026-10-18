@@ -168,49 +168,68 @@ def consultation(appointment_id):
         db.session.commit()
 
         # Send prescription PDF by email
-        if prescription and patient.email:
-            try:
-                pdf_bytes = generate_prescription_pdf(
-                    patient=patient,
-                    doctor=doctor,
-                    record=record,
-                    prescription=prescription,
+        
+        # Send prescription PDF by email
+        if prescription:
+            if not patient.email:
+                print("Prescription email skipped: patient email is missing.")
+                flash(
+                    "Consultation saved, but patient email is missing.",
+                    "warning",
                 )
+            else:
+                try:
+                    import base64
 
-                import base64
+                    pdf_bytes = generate_prescription_pdf(
+                        patient=patient,
+                        doctor=doctor,
+                        record=record,
+                        prescription=prescription,
+                    )
 
-                pdf_base64 = base64.b64encode(pdf_bytes).decode("utf-8")
+                    if not pdf_bytes.startswith(b"%PDF"):
+                        raise ValueError("Generated PDF is invalid.")
 
-                send_email(
-                    patient.email,
-                    "SmartCare - Prescription",
-                    f"""
-                    <h2>SmartCare Prescription</h2>
+                    pdf_base64 = base64.b64encode(pdf_bytes).decode("utf-8")
 
-                    <p>Hello {patient.full_name},</p>
+                    email_sent = send_email(
+                        patient.email,
+                        "SmartCare - Prescription",
+                        f"""
+                        <h2>SmartCare Prescription</h2>
+                        <p>Hello {patient.full_name},</p>
+                        <p>Your prescription is attached as a PDF.</p>
+                        <p>Thank you for using SmartCare.</p>
+                        """,
+                        attachments=[
+                            {
+                                "content": pdf_base64,
+                                "filename": (
+                                    f"prescription_{patient.patient_code}.pdf"
+                                ),
+                                "content_type": "application/pdf",
+                            }
+                        ],
+                    )
 
-                    <p>
-                        Your consultation has been completed.
-                        Your prescription is attached to this email as a PDF.
-                    </p>
+                    if not email_sent:
+                        print("Prescription email was not sent.")
+                        flash(
+                            "Consultation saved, but prescription email failed. "
+                            "Check the terminal for the reason.",
+                            "warning",
+                        )
+                    else:
+                        print("Prescription email accepted by Resend.")
 
-                    <p>
-                        <strong>Doctor:</strong> Dr. {doctor.full_name}<br>
-                        <strong>Diagnosis:</strong> {record.diagnosis}
-                    </p>
+                except Exception as e:
+                    print("Prescription email failed:", repr(e))
+                    flash(
+                        "Consultation saved, but prescription email failed.",
+                        "warning",
+                    )
 
-                    <p>Thank you for using SmartCare.</p>
-                    """,
-                    attachments=[
-                        {
-                            "content": pdf_base64,
-                            "filename": f"prescription_{patient.patient_code}.pdf",
-                        }
-                    ],
-                )
-
-            except Exception as e:
-                print("Prescription email failed:", e)
 
         flash("Consultation saved successfully.", "success")
         return redirect(
