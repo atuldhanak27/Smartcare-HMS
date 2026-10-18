@@ -6,7 +6,7 @@
     --sc-card-radius: 0.75rem;
 }
 
-body {
+.body {
     background-color: var(--sc-bg);
     font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }

@@ -1,0 +1,326 @@
+
+{% extends "base.html" %}
+{% block title %}Patient Registration{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-9 col-lg-6">
+        <div class="card shadow-lg">
+            <div class="card-body p-4">
+
+                <div class="text-center mb-4">
+                    <i class="bi bi-heart-pulse-fill text-success"
+                       style="font-size: 2.5rem;"></i>
+                    <h3 class="mt-2 mb-0 fw-bold">SmartCare</h3>
+                    <small class="text-muted">
+                        Patient Registration &amp; Appointment Booking
+                    </small>
+                </div>
+
+                <form method="POST"
+                      action="{{ url_for('patient_portal.register') }}"
+                      id="booking-form"
+                      novalidate>
+
+                    <input type="hidden" name="csrf_token"
+                           value="{{ csrf_token }}">
+
+                    <!-- Honeypot field for basic bot protection -->
+                    <div style="position:absolute;left:-9999px;"
+                         aria-hidden="true">
+                        <label>
+                            Leave this field empty
+                            <input type="text" name="website"
+                                   tabindex="-1" autocomplete="off">
+                        </label>
+                    </div>
+
+                    <!-- Patient Information -->
+                    <h6 class="fw-semibold text-success mb-3">
+                        <i class="bi bi-person me-1"></i>
+                        Patient Information
+                    </h6>
+
+                    <div class="mb-3">
+                        <label for="full_name" class="form-label">
+                            Patient Name *
+                        </label>
+                        <input type="text" class="form-control"
+                               id="full_name" name="full_name"
+                               value="{{ form.get('full_name', '') }}"
+                               maxlength="120" autocomplete="name"
+                               required autofocus>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">
+                            Mobile Number *
+                        </label>
+                        <input type="tel" class="form-control"
+                               id="phone" name="phone"
+                               value="{{ form.get('phone', '') }}"
+                               maxlength="20" inputmode="tel"
+                               autocomplete="tel"
+                               placeholder="e.g. 9876543210"
+                               required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">
+                            Email Address *
+                        </label>
+                        <input type="email" class="form-control"
+                               id="email" name="email"
+                               value="{{ form.get('email', '') }}"
+                               maxlength="120" autocomplete="email"
+                               required>
+                        <div class="form-text">
+                            Your appointment confirmation and Patient ID
+                            will be sent to this address.
+                        </div>
+                    </div>
+
+                    <!-- Appointment Information -->
+                    <h6 class="fw-semibold text-success mb-3">
+                        <i class="bi bi-calendar-check me-1"></i>
+                        Appointment Information
+                    </h6>
+
+                    <div class="mb-3">
+                        <label for="doctor_id" class="form-label">
+                            Choose Doctor *
+                        </label>
+
+                        <select class="form-select" id="doctor_id"
+                                name="doctor_id"
+                                data-url="{{ url_for('patient_portal.slots') }}"
+                                required>
+                            <option value="">Select a doctor</option>
+
+                            {% for doctor in doctors %}
+                            <option value="{{ doctor.id }}"
+                                {% if form.get('doctor_id', '')|string == doctor.id|string %}selected{% endif %}>
+                                Dr. {{ doctor.full_name }}{% if doctor.specialization %} — {{ doctor.specialization }}{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+
+                        {% if not doctors %}
+                        <div class="form-text text-danger">
+                            No active doctors are currently available.
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="appointment_date" class="form-label">
+                            Preferred Appointment Date *
+                        </label>
+                        <input type="date" class="form-control"
+                               id="appointment_date"
+                               name="appointment_date"
+                               value="{{ form.get('appointment_date', '') }}"
+                               min="{{ min_date }}"
+                               max="{{ max_date }}" required>
+                    </div>
+
+                    <div class="mb-2">
+                        <label for="appointment_time" class="form-label">
+                            Available Appointment Time *
+                        </label>
+                        <select class="form-select"
+                                id="appointment_time"
+                                name="appointment_time"
+                                data-selected="{{ form.get('appointment_time', '') }}"
+                                data-url="{{ url_for('patient_portal.slots') }}"
+                                required disabled>
+                            <option value="">Select a date first</option>
+                        </select>
+                    </div>
+
+                    <div id="slot-message"
+                         class="small mb-3"
+                         role="status"
+                         aria-live="polite"></div>
+
+                    <button type="submit"
+                            class="btn btn-sc-primary w-100"
+                            id="submit-btn">
+                        <i class="bi bi-calendar-plus me-1"></i>
+                        Register &amp; Book Appointment
+                    </button>
+                </form>
+
+                <hr>
+
+                <p class="text-center small mb-0">
+                    <a href="{{ url_for('auth.login') }}">
+                        Back to staff login
+                    </a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const form = document.getElementById("booking-form");
+    const dateInput = document.getElementById("appointment_date");
+    const doctorSelect = document.getElementById("doctor_id");
+    const select = document.getElementById("appointment_time");
+    const msg = document.getElementById("slot-message");
+    const btn = document.getElementById("submit-btn");
+
+    let requestId = 0;
+    let submitting = false;
+
+    function setMessage(text, cls) {
+        msg.textContent = text || "";
+        msg.className = "small mb-3 " + (cls || "");
+    }
+
+    function reset(label) {
+        select.innerHTML = "";
+
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = label;
+        select.appendChild(option);
+
+        select.disabled = true;
+    }
+
+    async function loadSlots(keepSelected) {
+        const selectedDate = dateInput.value;
+        const selectedDoctor = doctorSelect.value;
+        const myRequest = ++requestId;
+
+        if (!selectedDoctor) {
+            reset("Select a doctor first");
+            setMessage(
+                "Choose a doctor to see available appointment times.",
+                "text-muted"
+            );
+            return;
+        }
+
+        if (!selectedDate) {
+            reset("Select a date first");
+            setMessage("");
+            return;
+        }
+
+        reset("Loading available times...");
+        setMessage("");
+
+        try {
+            const url =
+                select.dataset.url +
+                "?date=" + encodeURIComponent(selectedDate) +
+                "&doctor_id=" + encodeURIComponent(selectedDoctor);
+
+            const response = await fetch(url, {
+                cache: "no-store",
+                headers: { "Accept": "application/json" }
+            });
+
+            const data = await response.json();
+
+            // Ignore outdated requests when the date/doctor changes.
+            if (myRequest !== requestId) return;
+
+            if (!response.ok) {
+                reset("Choose a valid date");
+                setMessage(
+                    data.error || "Could not retrieve appointment times.",
+                    "text-danger"
+                );
+                return;
+            }
+
+            if (!data.slots || data.slots.length === 0) {
+                reset("No slots available");
+                setMessage(
+                    data.message ||
+                    "No appointment slots are available. Please choose another date.",
+                    "text-danger"
+                );
+                return;
+            }
+
+            reset("Select a time");
+
+            data.slots.forEach(function (slot) {
+                const option = document.createElement("option");
+                option.value = slot.value;
+                option.textContent = slot.label;
+
+                if (
+                    keepSelected &&
+                    slot.value === select.dataset.selected
+                ) {
+                    option.selected = true;
+                }
+
+                select.appendChild(option);
+            });
+
+            select.disabled = false;
+
+        } catch (error) {
+            if (myRequest !== requestId) return;
+
+            reset("Could not load times");
+            setMessage(
+                "Could not load appointment times. Check your connection and try again.",
+                "text-danger"
+            );
+        }
+    }
+
+    dateInput.addEventListener("change", function () {
+        loadSlots(false);
+    });
+
+    doctorSelect.addEventListener("change", function () {
+        loadSlots(false);
+    });
+
+    form.addEventListener("submit", function (event) {
+        if (submitting) {
+            event.preventDefault();
+            return;
+        }
+
+        if (!form.checkValidity() || !select.value || select.disabled) {
+            event.preventDefault();
+            form.classList.add("was-validated");
+
+            if (!select.value || select.disabled) {
+                setMessage(
+                    "Please select an available appointment time.",
+                    "text-danger"
+                );
+            }
+
+            return;
+        }
+
+        submitting = true;
+        btn.disabled = true;
+        btn.innerHTML =
+            '<span class="spinner-border spinner-border-sm me-1"></span>' +
+            'Booking...';
+    });
+
+    // Restore available slots after server-side validation errors.
+    if (dateInput.value && doctorSelect.value) {
+        loadSlots(true);
+    }
+})();
+</script>
+{% endblock %}

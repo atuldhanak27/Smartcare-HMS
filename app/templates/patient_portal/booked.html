@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Appointment Confirmed{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-9 col-lg-6">
+        <div class="card shadow-lg stat-card">
+            <div class="card-body p-4">
+                <div class="text-center mb-3">
+                    <i class="bi bi-check-circle-fill text-success" style="font-size: 2.5rem;"></i>
+                    <h4 class="mt-2 fw-bold">
+                        {% if already_booked %}This appointment is already booked{% else %}Appointment confirmed{% endif %}
+                    </h4>
+                </div>
+                <dl class="row mb-3">
+                    <dt class="col-5">Patient ID</dt><dd class="col-7 fw-semibold">{{ patient.patient_code }}</dd>
+                    <dt class="col-5">Patient Name</dt><dd class="col-7">{{ patient.full_name }}</dd>
+                    <dt class="col-5">Date</dt><dd class="col-7">{{ appt.appointment_date|date_fmt('%A, %d %B %Y') }}</dd>
+                    <dt class="col-5">Time</dt><dd class="col-7">{{ appt.appointment_time|time12 }}</dd>
+                    <dt class="col-5">Doctor</dt><dd class="col-7">Dr. {{ doctor.full_name }}</dd>
+                </dl>
+
+                {% if already_booked %}
+                    <div class="alert alert-info mb-3">No new email was sent for this repeat request.</div>
+                {% elif email_sent %}
+                    <div class="alert alert-success mb-3">A confirmation email has been sent to {{ patient.email }}.</div>
+                {% else %}
+                    <div class="alert alert-warning mb-3">
+                        Your appointment is booked, but we could not send the confirmation email.
+                        Please note down your Patient ID and appointment details above.
+                    </div>
+                {% endif %}
+                <p class="text-muted small">This page is shown once. Please keep your Patient ID for future visits.</p>
+                <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary w-100">Back to login page</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -34,11 +34,13 @@ def create_app(config_name=None):
     from app.admin import admin_bp
     from app.receptionist import receptionist_bp
     from app.doctor import doctor_bp
+    from app.patient_portal import patient_portal_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp, url_prefix="/admin")
     app.register_blueprint(receptionist_bp, url_prefix="/reception")
     app.register_blueprint(doctor_bp, url_prefix="/doctor")
+    app.register_blueprint(patient_portal_bp, url_prefix="/patient")
 
     # --- root route: send user to their role's dashboard ---
     @app.route("/")
